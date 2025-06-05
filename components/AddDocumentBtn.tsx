@@ -1,6 +1,6 @@
 "use client";
 
-import { createDocument } from "@/lib/actions/room.action";
+import { createDocument } from "@/lib/actions/room.actions";
 import { Button } from "./ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";

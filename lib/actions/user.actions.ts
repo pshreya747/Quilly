@@ -1,11 +1,19 @@
 "use server";
 
-import { clerkClient, currentUser } from "@clerk/nextjs/server";
-import { parseStringify } from "../utils";
-import { liveblocks } from "../liveblocks";
+import { createClerkClient } from "@clerk/clerk-sdk-node";
 
+import { liveblocks } from "@/lib/liveblocks";
+
+import { parseStringify } from "../utils";
+
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY as string,
+});
+
+// Get Clerk Users
 export const getClerkUsers = async ({ userIds }: { userIds: string[] }) => {
   try {
+    // https://clerk.com/docs/references/backend/user/get-user-list#filter-by-email-addresses-and-phone-numbers
     const { data } = await clerkClient.users.getUserList({
       emailAddress: userIds,
     });
@@ -16,15 +24,22 @@ export const getClerkUsers = async ({ userIds }: { userIds: string[] }) => {
       email: user.emailAddresses[0].emailAddress,
       avatar: user.imageUrl,
     }));
+
+    // Sort users by the order of the userIds to make sure the order is consistent with userIds
     const sortedUsers = userIds.map((email) =>
       users.find((user) => user.email === email)
     );
+
     return parseStringify(sortedUsers);
   } catch (error) {
-    console.log(error);
+    console.error(
+      "An error occurred while retrieving users from Clerk:",
+      error
+    );
   }
 };
 
+// Get document users
 export const getDocumentUsers = async ({
   roomId,
   currentUser,
@@ -36,19 +51,23 @@ export const getDocumentUsers = async ({
 }) => {
   try {
     const room = await liveblocks.getRoom(roomId);
-    const users = Object.keys(room.usersAccesses).filter(
+
+    let users = Object.keys(room.usersAccesses).filter(
       (email) => email !== currentUser
     );
-    if (text.length) {
-      const lowerCaseText = text.toLowerCase();
 
-      const filteredUsers = users.filter((email: string) =>
-        email.toLowerCase().includes(lowerCaseText)
+    if (text.length) {
+      const loweredText = text.toLowerCase();
+      users = users.filter((email: string) =>
+        email.toLowerCase().includes(loweredText)
       );
-      return parseStringify(filteredUsers);
     }
+
     return parseStringify(users);
   } catch (error) {
-    console.log(`Error fetching document users: ${error}`);
+    console.error(
+      "An error occurred while retrieving the list of room users:",
+      error
+    );
   }
 };
